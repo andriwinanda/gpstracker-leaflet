@@ -107,7 +107,11 @@ export default {
       this.onTheWay = true
       this.isArrive = false
       this.map.setView(this.center, this.zoom);
-      if (!index) this.resetChartData()
+      if (!index) {
+        this.resetChartData()
+        vehicle.setRotationAngle(0)
+        vehicle.setLatLng(this.center)
+      }
       this.driving = setInterval(() => {
         if (index >= (routeMap[0].geometry.length - 1)) {
           index = 0;
@@ -123,7 +127,7 @@ export default {
           this.chartData.labels.push(current.timeStamp);
           this.map.panTo(current.coordinate)
         }
-      }, 10000);
+      }, 3000);
     },
 
     pause () {
