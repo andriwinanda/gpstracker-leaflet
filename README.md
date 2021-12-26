@@ -1,7 +1,7 @@
 # gpstracker-leaflet
 
 ### Demo Link
-See [Demo](https://gpstracker.vercel.app/).
+See [Demo](https://gpstracker-leaflet.vercel.app/).
 
 ## Project setup
 ```
