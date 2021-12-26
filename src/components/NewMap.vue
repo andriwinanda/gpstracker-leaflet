@@ -127,7 +127,7 @@ export default {
           this.chartData.labels.push(current.timeStamp);
           this.map.panTo(current.coordinate)
         }
-      }, 3000);
+      }, 10000);
     },
 
     pause () {
