@@ -29,6 +29,13 @@
             Stop
           </button>
         </div>
+        <!-- <RecyclerView
+          :prerender="30"
+          :fetch="MiFetch"
+          :item="MiItem"
+          :tombstone="MiTomstone"
+        ></RecyclerView> -->
+        <div class="list-wrapper" id="element"></div>
       </div>
     </div>
   </div>
@@ -49,12 +56,19 @@ var index = 0
 var vehicle = null
 Chart.register(...registerables);
 
+import VanillaRecyclerView from 'vanilla-recycler-view';
+import 'vanilla-recycler-view/dist/vanilla-recycler-view.min.css';
+
+
 export default {
   components: {
-    LineChart
+    LineChart,
   },
   data () {
     return {
+      dataList: () => MiFetch,
+      layout: null,
+
       map: null,
       zoom: 13,
       center: [3.575307, 98.684053],
@@ -86,6 +100,8 @@ export default {
     this.loadPolyline()
     this.createMap()
     this.centrifugeTest()
+    this.initCluster()
+
   },
 
   beforeDestroy () {
@@ -102,6 +118,11 @@ export default {
           // See below description of message format
           console.log("publish", message);
           this.createMarker(message)
+          this.loadList(message)
+        },
+        "message": (message) => {
+          // See below description of message format
+          console.log("message", message);
         },
         "join": function (message) {
           // See below description of join message format
@@ -149,10 +170,31 @@ export default {
         rotationAngle: 0,
         rotationOrigin: "center"
       }).addTo(this.map);
-
-
-
     },
+
+    loadList (dataList) {
+      const element = document.getElementById('element');
+      element.style.height = '400px';
+      const options = {
+        data: dataList.data,
+        renderer: class {
+          initialize (params) {
+            console.log(params.data.gps_id)
+            this.layout = document.createElement('div');
+            this.layout.classList.add("card");
+            this.layout.innerHTML = `
+            <p>GPS ID: ${params.data.gps_id}</p>
+              
+            `;
+          }
+          getLayout () {
+            return this.layout;
+          }
+        }
+      }
+      new VanillaRecyclerView(element, options);
+    },
+
     iconCar (status) {
       let indicator = 0
       if (status === 'PARK') indicator = 1
@@ -164,7 +206,7 @@ export default {
       return L.icon({ iconUrl: url, iconSize: [28, 28], });
     },
 
-    createMarker (data) {
+    initCluster () {
       this.clusteredPoints = L.markerClusterGroup({
         spiderfyOnMaxZoom: true,
         showCoverageOnHover: true,
@@ -177,19 +219,23 @@ export default {
             mag4: 0,
             mag5: 0
           }
-          cluster.getAllChildMarkers().map(el => {
-            if (el.options.information.status === 'DRIVING') option.mag1++
-            else if (el.options.information.status === 'STOP') option.mag2++
-            else if (el.options.information.status === 'PARK') option.mag3++
-            else if (el.options.information.status === 'INACTIVE') option.mag4++
-            else if (el.options.information.status === 'ALERT') option.mag5++
-          })
+          let child = cluster.getAllChildMarkers()
+          for (let i = 0; i < child.length; i++) {
+            if (child[i].options.information.status === 'DRIVING') option.mag1++
+            else if (child[i].options.information.status === 'STOP') option.mag2++
+            else if (child[i].options.information.status === 'PARK') option.mag3++
+            else if (child[i].options.information.status === 'INACTIVE') option.mag4++
+            else if (child[i].options.information.status === 'ALERT') option.mag5++
+          }
           return L.divIcon({
-            html: this.createDonutChart(option)
+            html: this.createDonutChart(option),
+            className: "iconCluster"
           });
         }
       });
+    },
 
+    createMarker (data) {
       let customMarker = L.Marker.extend({
         options: {
           information: {},
@@ -198,21 +244,22 @@ export default {
         }
       });
 
-      data.data.map(el => {
-        if (!this.markers[el.gps_id]) {
-          this.markers[el.gps_id] = new customMarker([el.latitude, el.longitude], {
-            title: el.gps_id,
+      for (let i = 0; i < data.data.length; i++) {
+        if (!this.markers[data.data[i].gps_id]) {
+          this.markers[data.data[i].gps_id] = new customMarker([data.data[i].latitude, data.data[i].longitude], {
+            title: data.data[i].gps_id,
             rotationOrigin: "center"
           })
-          this.clusteredPoints.addLayer(this.markers[el.gps_id]);
+          this.clusteredPoints.addLayer(this.markers[data.data[i].gps_id]);
         }
+        this.markers[data.data[i].gps_id].setRotationAngle(data.data[i].course)
+        this.markers[data.data[i].gps_id].setIcon(this.iconCar(data.data[i].status))
+        this.markers[data.data[i].gps_id].setLatLng([data.data[i].latitude, data.data[i].longitude])
+        this.markers[data.data[i].gps_id].options.setInformation(data.data[i])
 
-        this.markers[el.gps_id].setRotationAngle(el.course)
-        this.markers[el.gps_id].setIcon(this.iconCar(el.status))
-        this.markers[el.gps_id].setLatLng([el.latitude, el.longitude])
-        this.markers[el.gps_id].options.setInformation(el)
-        // this.clusteredPoints.refreshClusters()
-      })
+        // REFRESH CLUSTER
+        this.clusteredPoints.refreshClusters(this.markers)
+      }
       this.map.addLayer(this.clusteredPoints)
 
     },
@@ -287,14 +334,13 @@ export default {
         total += count;
       }
       const fontSize =
-        total >= 1000 ? 22 : total >= 100 ? 20 : total >= 10 ? 18 : 16;
+        total >= 1000 ? 18 : total >= 100 ? 16 : total >= 10 ? 14 : 12;
       const r =
         total >= 1000 ? 50 : total >= 100 ? 32 : total >= 10 ? 24 : 18;
       const r0 = Math.round(r * 0.6);
       const w = r * 2;
 
-      let html = `<div>
-      <svg width="${w}" height="${w}" viewbox="0 0 ${w} ${w}" text-anchor="middle" style="font: ${fontSize}px sans-serif; display: block">`;
+      let html = `<svg width="${w}" height="${w}" viewbox="0 0 ${w} ${w}" text-anchor="middle" style="font: ${fontSize}px sans-serif; display: block">`;
 
       for (let i = 0; i < counts.length; i++) {
         html += this.donutSegment(
@@ -309,8 +355,7 @@ export default {
       <text dominant-baseline="central" transform="translate(${r}, ${r})">
       ${total.toLocaleString()}
       </text>
-      </svg>
-      </div>`;
+      </svg>`;
 
       const el = document.createElement('div');
       el.innerHTML = html;
@@ -401,4 +446,5 @@ export default {
     height: 73vh;
   }
 }
+
 </style>

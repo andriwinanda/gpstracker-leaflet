@@ -13,6 +13,7 @@
     "leaflet": "^1.7.1",
     "leaflet-rotatedmarker": "^0.2.0",
     "leaflet.markercluster": "^1.5.3",
+    "vanilla-recycler-view": "^1.1.8",
     "vue": "^3.0.0",
     "vue-chart-3": "^3.0.4",
     "vue-router": "^4.0.0-0",
