@@ -345,8 +345,7 @@ export default {
           getInformation: function () { return this.information }
         }
       });
-
-      for (let i = 0; i < data.data.length; i++) {
+      this.asyncLoop(data.data, (i) => {
         let info = data.data[i]
         if (!this.markers[data.data[i].gps_id]) {
           this.markers[data.data[i].gps_id] = new customMarker([data.data[i].latitude, data.data[i].longitude], {
@@ -373,7 +372,36 @@ export default {
 
         // REFRESH CLUSTER
         this.clusteredPoints.refreshClusters(this.markers)
-      }
+      })
+
+      // for (let i = 0; i < data.data.length; i++) {
+      //   let info = data.data[i]
+      //   if (!this.markers[data.data[i].gps_id]) {
+      //     this.markers[data.data[i].gps_id] = new customMarker([data.data[i].latitude, data.data[i].longitude], {
+      //       title: data.data[i].gps_id,
+      //       rotationOrigin: "center"
+      //     })
+      //     this.clusteredPoints.addLayer(this.markers[data.data[i].gps_id]);
+      //     // console.log('push')
+      //     // this.list.push(data.data[i])
+      //     // info.idx = i
+
+      //   } else {
+      //     // console.log("update")
+      //     // let idx = this.markers[data.data[i].gps_id].options.getInformation().idx
+      //     // info.idx = idx
+      //     // this.list.splice(idx, 1)
+      //     // this.list.insert(idx, data.data[i])
+
+      //   }
+      //   this.markers[data.data[i].gps_id].setRotationAngle(data.data[i].course)
+      //   this.markers[data.data[i].gps_id].setIcon(L.icon({ iconUrl: this.iconCar(data.data[i].status), iconSize: [28, 28], }))
+      //   this.markers[data.data[i].gps_id].setLatLng([data.data[i].latitude, data.data[i].longitude])
+      //   this.markers[data.data[i].gps_id].options.setInformation(info)
+
+      //   // REFRESH CLUSTER
+      //   this.clusteredPoints.refreshClusters(this.markers)
+      // }
       this.map.addLayer(this.clusteredPoints)
       console.log("Marker Finish")
       this.isLoadingList = false
