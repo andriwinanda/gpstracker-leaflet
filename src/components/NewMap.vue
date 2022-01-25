@@ -250,14 +250,6 @@ export default {
     async updateList (dataList) {
       this.isLoadingList = true
       console.log(this.isLoadingList)
-      // this.listData.findIndex(checkValue)
-      // this.listData = dataList
-      // if (!this.listData[dataList.data.gps_id]) {
-      //   this.list.push(dataList.data[i])
-      // } else {
-      //   this.list.splice(this.listData[dataList.data.gps_id].idx, 1)
-      //   this.list.insert(this.listData[dataList.data.gps_id].idx, dataList.data[i])
-      // }
       this.asyncLoop(dataList.data, (i) => {
         let idx = this.listData.findIndex((id) => id.gps_id == dataList.data[i].gps_id)
         if (!(idx >= 0)) {
@@ -269,27 +261,9 @@ export default {
           this.list.splice(idx, 1)
           this.list.insert(idx, dataList.data[i])
           console.log("Update", idx)
-
-
         }
       });
-      // for (let i = 0; i < dataList.data.length; i++) {
 
-      //   let idx = this.listData.findIndex((id) => id.gps_id == dataList.data[i].gps_id)
-      //   if (!(idx >= 0)) {
-      //     this.listData.push(dataList.data[i])
-      //     this.list.push(dataList.data[i])
-      //     // console.log('Add list', idx)
-      //   } else {
-      //     this.listData[idx] = dataList.data[i]
-      //     this.list.splice(idx, 1)
-      //     this.list.insert(idx, dataList.data[i])
-      //     // console.log("Update", idx)
-
-
-      //   }
-
-      // }
       this.isLoadingList = false
 
     },
@@ -353,16 +327,6 @@ export default {
             rotationOrigin: "center"
           })
           this.clusteredPoints.addLayer(this.markers[data.data[i].gps_id]);
-          // console.log('push')
-          // this.list.push(data.data[i])
-          // info.idx = i
-
-        } else {
-          // console.log("update")
-          // let idx = this.markers[data.data[i].gps_id].options.getInformation().idx
-          // info.idx = idx
-          // this.list.splice(idx, 1)
-          // this.list.insert(idx, data.data[i])
 
         }
         this.markers[data.data[i].gps_id].setRotationAngle(data.data[i].course)
@@ -374,40 +338,9 @@ export default {
         this.clusteredPoints.refreshClusters(this.markers)
       })
 
-      // for (let i = 0; i < data.data.length; i++) {
-      //   let info = data.data[i]
-      //   if (!this.markers[data.data[i].gps_id]) {
-      //     this.markers[data.data[i].gps_id] = new customMarker([data.data[i].latitude, data.data[i].longitude], {
-      //       title: data.data[i].gps_id,
-      //       rotationOrigin: "center"
-      //     })
-      //     this.clusteredPoints.addLayer(this.markers[data.data[i].gps_id]);
-      //     // console.log('push')
-      //     // this.list.push(data.data[i])
-      //     // info.idx = i
-
-      //   } else {
-      //     // console.log("update")
-      //     // let idx = this.markers[data.data[i].gps_id].options.getInformation().idx
-      //     // info.idx = idx
-      //     // this.list.splice(idx, 1)
-      //     // this.list.insert(idx, data.data[i])
-
-      //   }
-      //   this.markers[data.data[i].gps_id].setRotationAngle(data.data[i].course)
-      //   this.markers[data.data[i].gps_id].setIcon(L.icon({ iconUrl: this.iconCar(data.data[i].status), iconSize: [28, 28], }))
-      //   this.markers[data.data[i].gps_id].setLatLng([data.data[i].latitude, data.data[i].longitude])
-      //   this.markers[data.data[i].gps_id].options.setInformation(info)
-
-      //   // REFRESH CLUSTER
-      //   this.clusteredPoints.refreshClusters(this.markers)
-      // }
       this.map.addLayer(this.clusteredPoints)
       console.log("Marker Finish")
       this.isLoadingList = false
-
-
-
     },
 
     loadPolyline () {
