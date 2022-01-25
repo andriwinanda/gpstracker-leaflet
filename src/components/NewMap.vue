@@ -28,14 +28,32 @@
           <button type="button" class="control-btn" @click="stop()">
             Stop
           </button>
+          <button
+            type="button"
+            class="control-btn"
+            @click="isLoadingList = !isLoadingList"
+          >
+            {{ isLoadingList ? "Stop" : "Loading" }}
+          </button>
         </div>
-        <!-- <RecyclerView
-          :prerender="30"
-          :fetch="MiFetch"
-          :item="MiItem"
-          :tombstone="MiTomstone"
-        ></RecyclerView> -->
-        <div class="list-wrapper" id="element"></div>
+
+        <div class="list-wrapper" id="element">
+          <div v-if="isLoadingList" v-for="i in 7" :key="i">
+            <div class="row padding-v card">
+              <div class="col">
+                <Skeletor width="40" height="40" />
+              </div>
+              <div class="col padding-h text-left">
+                <p>
+                  <Skeletor width="200" />
+                </p>
+                <small>
+                  <Skeletor width="150" />
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -55,6 +73,9 @@ var YOUR_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdGFydGRlbW8iL
 var index = 0
 var vehicle = null
 Chart.register(...registerables);
+import 'vue-skeletor/dist/vue-skeletor.css';
+import { Skeletor } from 'vue-skeletor';
+
 
 import VanillaRecyclerView from 'vanilla-recycler-view';
 import 'vanilla-recycler-view/dist/vanilla-recycler-view.min.css';
@@ -63,14 +84,14 @@ import 'vanilla-recycler-view/dist/vanilla-recycler-view.min.css';
 export default {
   components: {
     LineChart,
+    Skeletor
   },
   data () {
     return {
-      dataList: () => MiFetch,
       layout: null,
 
       map: null,
-      zoom: 13,
+      zoom: 6,
       center: [3.575307, 98.684053],
       polyLine: [],
       driving: null,
@@ -91,7 +112,10 @@ export default {
       },
       colors: ['#007bff', '#37c936', '#868e96', '#ff8f00', '#d81900'],
       clusteredPoints: null,
-      markers: {}
+      markers: {},
+      list: null,
+      listData: [],
+      isLoadingList: false
 
     }
   },
@@ -101,6 +125,7 @@ export default {
     this.createMap()
     this.centrifugeTest()
     this.initCluster()
+    this.initList()
 
   },
 
@@ -118,7 +143,8 @@ export default {
           // See below description of message format
           console.log("publish", message);
           this.createMarker(message)
-          this.loadList(message)
+          this.updateList(message)
+
         },
         "message": (message) => {
           // See below description of message format
@@ -172,27 +198,100 @@ export default {
       }).addTo(this.map);
     },
 
-    loadList (dataList) {
+    initList () {
       const element = document.getElementById('element');
-      element.style.height = '400px';
       const options = {
-        data: dataList.data,
+        data: [],
         renderer: class {
+          iconCar (status) {
+            let indicator = 0
+            if (status === 'PARK') indicator = 1
+            else if (status === 'DRIVING') indicator = 2
+            else if (status === 'STOP') indicator = 3
+            else if (status === 'INACTIVE') indicator = 4
+            else if (status === 'ALERT') indicator = 5
+            let url = `https://start-dev.oss-ap-southeast-5.aliyuncs.com/files/icon-images/sedan0${indicator}_64.png`
+            return url;
+          }
           initialize (params) {
-            console.log(params.data.gps_id)
+            // console.log(this.listComponent(params))
             this.layout = document.createElement('div');
             this.layout.classList.add("card");
             this.layout.innerHTML = `
-            <p>GPS ID: ${params.data.gps_id}</p>
-              
-            `;
+            <div class="row">
+              <div class="col">
+                <img src="${this.iconCar(params.data.status)}" width='40px'/>
+              </div>
+              <div class="col">
+                <p>GPS ID: ${params.data.gps_id}</p>
+                <small class="status">Status : ${params.data.status}</small>
+              </div>
+            </div>
+            `
           }
           getLayout () {
             return this.layout;
           }
         }
       }
-      new VanillaRecyclerView(element, options);
+      this.list = new VanillaRecyclerView(element, options);
+
+    },
+    async asyncLoop (iters, callback) {
+      for (let i = 0; i < iters.length; i++) {
+        await new Promise((resolve, _reject) => {
+          setTimeout(() => {
+            callback(i);
+            resolve();
+          }, 0);
+        });
+      }
+    },
+    async updateList (dataList) {
+      this.isLoadingList = true
+      console.log(this.isLoadingList)
+      // this.listData.findIndex(checkValue)
+      // this.listData = dataList
+      // if (!this.listData[dataList.data.gps_id]) {
+      //   this.list.push(dataList.data[i])
+      // } else {
+      //   this.list.splice(this.listData[dataList.data.gps_id].idx, 1)
+      //   this.list.insert(this.listData[dataList.data.gps_id].idx, dataList.data[i])
+      // }
+      this.asyncLoop(dataList.data, (i) => {
+        let idx = this.listData.findIndex((id) => id.gps_id == dataList.data[i].gps_id)
+        if (!(idx >= 0)) {
+          this.listData.push(dataList.data[i])
+          this.list.push(dataList.data[i])
+          console.log('Add list', idx)
+        } else {
+          this.listData[idx] = dataList.data[i]
+          this.list.splice(idx, 1)
+          this.list.insert(idx, dataList.data[i])
+          console.log("Update", idx)
+
+
+        }
+      });
+      // for (let i = 0; i < dataList.data.length; i++) {
+
+      //   let idx = this.listData.findIndex((id) => id.gps_id == dataList.data[i].gps_id)
+      //   if (!(idx >= 0)) {
+      //     this.listData.push(dataList.data[i])
+      //     this.list.push(dataList.data[i])
+      //     // console.log('Add list', idx)
+      //   } else {
+      //     this.listData[idx] = dataList.data[i]
+      //     this.list.splice(idx, 1)
+      //     this.list.insert(idx, dataList.data[i])
+      //     // console.log("Update", idx)
+
+
+      //   }
+
+      // }
+      this.isLoadingList = false
+
     },
 
     iconCar (status) {
@@ -203,7 +302,7 @@ export default {
       else if (status === 'INACTIVE') indicator = 4
       else if (status === 'ALERT') indicator = 5
       let url = `https://start-dev.oss-ap-southeast-5.aliyuncs.com/files/icon-images/sedan0${indicator}_64.png`
-      return L.icon({ iconUrl: url, iconSize: [28, 28], });
+      return url;
     },
 
     initCluster () {
@@ -235,7 +334,10 @@ export default {
       });
     },
 
-    createMarker (data) {
+    async createMarker (data) {
+      // this.updateList(data)
+      console.log("Loading Marker")
+      this.isLoadingList = true
       let customMarker = L.Marker.extend({
         options: {
           information: {},
@@ -245,22 +347,38 @@ export default {
       });
 
       for (let i = 0; i < data.data.length; i++) {
+        let info = data.data[i]
         if (!this.markers[data.data[i].gps_id]) {
           this.markers[data.data[i].gps_id] = new customMarker([data.data[i].latitude, data.data[i].longitude], {
             title: data.data[i].gps_id,
             rotationOrigin: "center"
           })
           this.clusteredPoints.addLayer(this.markers[data.data[i].gps_id]);
+          // console.log('push')
+          // this.list.push(data.data[i])
+          // info.idx = i
+
+        } else {
+          // console.log("update")
+          // let idx = this.markers[data.data[i].gps_id].options.getInformation().idx
+          // info.idx = idx
+          // this.list.splice(idx, 1)
+          // this.list.insert(idx, data.data[i])
+
         }
         this.markers[data.data[i].gps_id].setRotationAngle(data.data[i].course)
-        this.markers[data.data[i].gps_id].setIcon(this.iconCar(data.data[i].status))
+        this.markers[data.data[i].gps_id].setIcon(L.icon({ iconUrl: this.iconCar(data.data[i].status), iconSize: [28, 28], }))
         this.markers[data.data[i].gps_id].setLatLng([data.data[i].latitude, data.data[i].longitude])
-        this.markers[data.data[i].gps_id].options.setInformation(data.data[i])
+        this.markers[data.data[i].gps_id].options.setInformation(info)
 
         // REFRESH CLUSTER
         this.clusteredPoints.refreshClusters(this.markers)
       }
       this.map.addLayer(this.clusteredPoints)
+      console.log("Marker Finish")
+      this.isLoadingList = false
+
+
 
     },
 
@@ -296,7 +414,7 @@ export default {
           this.chartData.labels.push(current.timeStamp);
           this.map.panTo(current.coordinate)
         }
-      }, 10000);
+      }, 300);
     },
 
     pause () {
@@ -385,6 +503,17 @@ export default {
 }
 </script>
 <style>
+.text-left {
+  text-align: left;
+}
+.padding-v {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.padding-h {
+  padding-left: 10px;
+  padding-right: 10px;
+}
 .main {
   padding: 25px;
 }
@@ -446,5 +575,20 @@ export default {
     height: 73vh;
   }
 }
-
+.list-wrapper {
+  height: 400px;
+}
+.list-wrapper .card {
+  text-align: left;
+}
+.list-wrapper .card p {
+  margin: 0;
+}
+.status {
+  color: gray;
+  size: 7pt;
+}
+.row {
+  display: flex;
+}
 </style>
